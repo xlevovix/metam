@@ -1,0 +1,14 @@
+import console
+
+const f = console.input<double>("Первое число: ")
+const o = console.input("Операция: ")
+const s = console.input<double>("Второе число: ")
+
+match o {
+    "+" => console << f + s
+    "-" => console << f - s
+    "*" => console << f * s
+    "/" => console << f / s
+    _ => console.error("Неизвестная операция")
+}
+console << endl

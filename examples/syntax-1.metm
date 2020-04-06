@@ -1,0 +1,230 @@
+// NOTE: Это файл для простого тестирования всех частей языка
+
+// комментарий
+//> многострочный
+    комментарий <//
+
+// стандартная библиотека
+import stl
+// стандартная библиотека окружения
+import environment
+// сторонний модуль (тут игнорируется)
+import _
+
+// "это игнорируемый модуль", никакой модуль (можно опустить)
+module _
+
+// переменная
+var a = 0
+var b: string = "hello, world!"
+var c: opt<string>   // opt - переменная может иметь нулевое значение (nullopt)
+var d: void         // игнорируется
+// var a = 2    - ошибка, a уже объявлена в этом пространстве имён
+// var d        - ошибка, неопределённый тип
+
+// константы (или как принято в молодых ЯП - имутабельные переменные)
+const pi = 3.14
+const author: string = "levovix"
+// константы типа opt - логическая ошибка
+const d: void       // всё ещё игнорируется
+
+a = 10  // присвоение
+++a     // инкремент
+a += 5  // прибавить
+a = a * 2   // так тоже можно
+// a = 32
+
+// функции
+sqr(x) -> x*x               // тип параметров - шаблонный
+peew(a, b: uint) -> a * b   // a - шаблонная, b - uint
+sqr2(x): int -> x*x         // всегда вернёт int, хоть x и шаблонный
+// возврат разных типов из функции во время выполнения - ошибка
+// но если использовать const if (условие времени компиляции), можно вернуть разные типы
+print(x) -> {
+    console << x << endl
+}
+print(x, other...) -> {     // x... - переменные аргументы
+    console << x
+    print(other...)
+}
+print2(params...[]) -> {     // x...[] - переменные аргументы как массив (этапа компиляции)
+    for x in params
+        console << x
+    console << endl
+}
+print3(params...[2]) -> {     // x...[] - переменные аргументы как массив с ограниченным размером
+    console << params[0] << params[1] << endl
+}
+copy<T>(begin: iterator<T>, end: iterator<T>, to: iterator<T>) -> {  // iterator - концепт
+    for a in range(begin, end) {    // range создаёт диапазон (в данном случае из итераторов)
+        (T&)to = a
+        ++to
+    }
+}
+factorial(n: uint) expects n != 0 -> {   // "ожидается, что n != 0"; если условие не выполнено на этапе компиляции с константами - ошибка
+    if n == 1
+        return 1
+    else
+        return factorial(n-1) * n
+}
+
+if false
+    _
+else {
+    _
+    _
+    _
+}
+
+while false
+    console << "while iteration"
+do while false
+    console << "do while iteration"
+
+for 10 times
+    _
+for x in 10 times
+    _
+for x in 0..10  // range с помощью ..
+    _
+for x in range(0, 10)
+    _
+for var i = 0; i < 10; ++i
+    _
+
+const s = "c"
+match s {
+    "a" => console << "a"
+    "b" => console << pow(5, 7)
+    "c", "d" => console << "cd" // "c" или "d"
+    _ => console << s   // default
+}
+
+
+
+// типы
+type jtp {              // просто тип
+    m: int
+    j: string
+}
+enum tt {               // перечисление
+    abc, bca = 0, cab   // (abc = -1, cab = 1)
+    // error
+    // a1 = 0, a2 = -1, a3
+    // ok
+    a1 = 0, a2 = -1, a3 = -2
+}
+type uchar = ubyte      // typedef
+type xy<T> {            // шаблонный тип
+    x: T
+    y: T
+
+    operator+(b) ->    // если один аргумент в операторе, по умолчанию константная ссылка на этот же тип
+        xy(x + b.x, y + b.y)
+
+    foo() -> console << "foooooooooo"   // просто метод
+}
+xy::foo2() -> console << "hello, world" // расширение при неявном шаблоне
+<T> xy<T>::foo3() -> this.foo()         // расширение при явном шаблоне (this тут не обязателен, но так проще)
+xy::foo4() -> nsup.foo(Arr<int>(10))       // достаём foo из пространства имён, а не из класса (+ foo объявлен ниже)
+
+type Arr<T, C: int> {   // шаблонный тип с типом аргумента НЕ type
+    arr: T[C]           // массив с константным числом аргументов
+    const count = C     // константа типа из аргумента шаблона (ещё можно x.C или type(x).template<1>(), где x: Arr)
+}
+
+sizebytes(arr: Arr) -> type(arr).C + type(arr).T.size
+foo2(arr: Arr) -> type(arr).variables[0].type
+// Маааааагия
+
+// работа с синтаксическим деревом
+namespace _ {  // безымянное пространство имён
+    var a = <: 10 / 0 :>    // получение синтакческого дерева из выражения в языке metam
+    var b = print::(x).ast  // получение синтакческого дерева из БЛОКА (всегда блок) выражений функции
+    var c = xy<int>         // получение типа
+    var c = xy              // получение шаблонного типа
+
+    a[1] = <: 2 + 3 :>      // a = <: 10 / (2 + 3) :>; корень дерева - (+), второе поддерево - (0) стало (2 + 3)
+
+    const x_ = b[0][0][1]   // x_ = <: x :> (в контексте той функции) (thisfn.argument["x"] :))
+    b[0][0] = b[0][0][0]    // b = <: console << endl :>
+    b[0][1] = x_ + <: + "\n" :> // b = <: console << (x + "\n") :>
+    share print3::(x) ->= b     // объявлена новая функция по ast из b!
+    nsup.addFunction("print4", template = ["T"], args = [{"x", "T"}], b)   // "динамическое" добавление функции
+
+    c.variables.add({"z", int)  // добавление переменной z в тип ({} - uniform инициализация)
+    d.template.add("B", type)   // новый аргумент шаблона
+    d.variables[1].type &= d.B  // изменение типа переменной
+
+    share type xyz = c          // объявляем новый тип
+    share type xy2 = d          // share - поднимает видимость объявяемой переменной по пространству имён
+}
+
+const lambda = (x, y) -> (y, x) // лямбда функция, (x, y) - кортеж, при "кортеж -> ..." объявляется функция
+
+// пространства имён
+namespace foo {
+    const c_n = namespace.current   // текущее пространство имён
+    namespace foo2 {
+        namespace.current.up.c_n    // верхнее ПИ -> c_n
+        nsup.c_n                    // укороченная запись
+        foo.c_n                     // здесь так тоже можно, нет ПИ foo.foo
+        c_n                         // здесь так тоже можно, нет c_n в этом ПИ
+    }
+    namespace a.b.c.d.e {}          // много влеженных ПИ сразу
+}
+
+const namespace_var = namespace(foo)    // получение объекта-пространства имён
+
+// исключения
+throww(a: int) -> {
+    if (a < 0) throw "incorrect input"  // автоматически приводится к exception
+    if (a > 0) throw exception("???")   // exception
+    throw a                             // автоматически приводится к errorCodeException
+}
+(a: int) {
+    try {
+        throww(a)
+    } catch {
+        // намана
+    }
+    try {
+        throww(a)
+    } catch (e) { // приводится к обычному exception
+        console << e.text
+    }
+    try {
+        throww(a)
+    } catch (e: errorCodeException) {
+        console << "Error: " << e.code
+    } else catch {
+        console << "???"
+    }
+}
+
+//>
+    var - объявить переменную
+    const - объявить константу (иммутабильную переменную)
+    : всё, что можно вычислить во время компиляции, вычисляется во время компиляции (даже если это var)
+
+    namespace - работа/объявление пространства имён
+    import - подключить модуль
+    module - установить модуль (един на файл :|) модули автоматически подключают зависимости
+    private - выполнить неэкспортируемое из модуля/типа
+
+    this - я-объект (это ссылка)
+    thisfn - я-функция
+    thiscl - я-тип
+    thisns - текущее пространство имён
+    nsup   - верхнее пространство имён
+    share  - выполнить в верхнем ПИ, с доступом к текущему
+<//
+
+main(x: ast) -> {
+    //...
+}
+
+// экспортируем в c++ основную (и единственную экспортируемую) функцию.
+environment.export(main::(x: ast))
+// если функция не перегружена, можно просто environment.export(main)
+

@@ -1,0 +1,20 @@
+import console
+
+console << "Первое число: "
+const f = console.readln()
+console << "Операция: "
+const o = console.readln()
+console << "Второе число: "
+const s = console.readln()
+
+const F = double(f)
+const S = double(s)
+
+match o {
+    "+" => console << F + S
+    "-" => console << F - S
+    "*" => console << F * S
+    "/" => console << F / S
+    _ => console << "Неизвестная операция"
+}
+console << endl
